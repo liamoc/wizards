@@ -68,6 +68,7 @@ Library
   Exposed-modules: System.Console.Wizard
                    System.Console.Wizard.Internal
                    System.Console.Wizard.Haskeline
+                   System.Console.Wizard.BasicIO
                    
   
   -- Packages needed in order to build this package.
