@@ -29,11 +29,11 @@ Author:              Liam O'Connor-Davis
 Maintainer:          liamoc@cse.unsw.edu.au
 
 
-Description: @wizards@ is a package designed for the quick and painless development of interrogative programs, which
-  revolve around a \"dialogue\" with the user, who is asked a series of questions in a sequence, much like an 
+Description: @wizards@ is a package designed for the quick and painless development of /interrogative/ programs, which
+  revolve around a \"dialogue\" with the user, who is asked a series of questions in a sequence much like an 
   installation wizard.
   .
-  Everything from interactive shell scripts, to installation wizards, to full-blown shells can be implemented with
+  Everything from interactive system scripts, to installation wizards, to full-blown shells can be implemented with
   the support of @wizards@.
   .
   It is developed transparently on top of a Prompt monad, which separates out the semantics of the program from any

@@ -28,7 +28,7 @@ data WizardAction :: ((* -> *) -> * -> *) -> (* -> *) -> * -> * where
 --      1. A back-end data type (the type parameter to 'Wizard'), which includes constructors
 --         for any primitive actions or modifiers that are specific to the back-end.
 --
---      2. An interpreter function, of type @Wizard DataType a -> B a@ for some type @B@ (depending on the backend).
+--      2. An interpreter function, of type @Wizard DataType a -> B (Maybe a)@ for some type @B@ (depending on the backend).
 --         Typically this function will provide semantics for each 'WizardAction' using 'runRecPromptM' or similar.
 --   
 --   The 'Backend' constructor can be used to add back-end specific primitives and modifiers.
@@ -38,7 +38,7 @@ data WizardAction :: ((* -> *) -> * -> *) -> (* -> *) -> * -> * where
 --   So, my backend data type will be:
 --
 -- @
--- data MyBackend m r = ArbitraryIO (IO r)
+-- data MyBackend (m :: * -> *) r = ArbitraryIO (IO r) -- kind signature to avoid defaulting to *
 -- @
 -- 
 --   And my interpreter function will be:

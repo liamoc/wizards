@@ -13,6 +13,7 @@ module System.Console.Wizard
     , output
     , outputLn
       -- * Modifiers
+      -- $modifiers
     , retry
     , retryMsg
     , defaultTo
