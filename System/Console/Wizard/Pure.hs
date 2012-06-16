@@ -56,7 +56,7 @@ runPure w s = let (r, (_,o)) = runState (run w) (lines s, empty)
                                  return r
         f (Password s _) = f (Line s)
         f (LinePreset s _ _) = f (Line s)
-        f (Menu p m) = run (simpleMenu p m False)
+        f (Menu p m) = run (simpleMenu p m)
         f (Output s) = modify (second (>< fromList s))
                     >> modify (\s -> s `seq` s)
         f (OutputLn s) = modify (second $ (|> '\n') . (>< fromList s))

@@ -27,7 +27,7 @@ runBasicIO (Wizard (MaybeT c)) = runRecPromptM f c
         f (LinePreset s f b) = getLine
         f (Output s) = putStr s
         f (OutputLn s) = putStrLn s
-        f (Menu p s) = runBasicIO (simpleMenu p s True)
+        f (Menu p s) = runBasicIO (simpleMenu p s)
         f (Backend (ArbitraryIO a)) = a
 
 instance MonadIO (Wizard BasicIO) where

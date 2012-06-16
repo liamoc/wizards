@@ -77,6 +77,7 @@ Library
   -- Modules exported by the library.
   Exposed-modules: System.Console.Wizard
                    System.Console.Wizard.Internal
+                   System.Console.Wizard.Internal.SimpleMenu
                    System.Console.Wizard.Haskeline
                    System.Console.Wizard.BasicIO
                    System.Console.Wizard.Pure

@@ -1,9 +1,18 @@
-module System.Console.Wizard.Internal.SimpleMenu where
+module System.Console.Wizard.Internal.SimpleMenu (simpleMenu) where
 
 import System.Console.Wizard
+import System.Console.Wizard.Internal
 import Control.Monad
     
-simpleMenu :: String -> [(String, v)] -> Bool -> Wizard b v
-simpleMenu pr items out = do when out $ output $ unlines $ map promptString $ zip [0..] $ map fst items
-                             fmap (map snd items !!) $ inRange (0, length items - 1) $ parseRead $ line pr
+-- | A useful function for implementing simple menu systems on top of existing backend features.
+--   Used by Pure, BasicIO and Haskeline to implement their simple menu systems. 
+simpleMenu :: PromptString 
+           -> [(String, v)] 
+           -> Wizard b v
+simpleMenu pr items = fmap (map snd items !!) 
+                    $ inRange (0, length items - 1) 
+                    $ parseRead 
+                    $ line 
+                    $ unlines 
+                    $ (map promptString $ zip [0..] $ map fst items) ++ [pr]
   where promptString (n, str) = show n ++ ". " ++ str                         

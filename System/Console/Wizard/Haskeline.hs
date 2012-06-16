@@ -36,7 +36,7 @@ runHaskeline (Wizard c) = runRecPromptM f $ runMaybeT c
         f (LinePreset s f b) = getInputLineWithInitial s (f,b) >>= maybeToException UnexpectedEOF 
         f (Output s) = outputStr s
         f (OutputLn s) = outputStrLn s
-        f (Menu p s) = runHaskeline (simpleMenu p s True)
+        f (Menu p s) = runHaskeline (simpleMenu p s)
         f (Backend (SetSettings s v)) = liftIO $ runInputT s (runRecPromptM f v)
         f (Backend (ArbitraryIO a)) = liftIO $ a
 
