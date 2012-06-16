@@ -37,9 +37,10 @@ Description: @wizards@ is a package designed for the quick and painless developm
   the support of @wizards@.
   .
   It is developed transparently on top of a Prompt monad, which separates out the semantics of the program from any
-  particular interface. A variety of backends exist, including "System.Console.Wizard.Haskeline" and 
-  "System.Console.Wizard.BasicIO". It is also possible to write your own backends. While both built-in backends 
-  operate on a console, there is no reason why @wizards@ cannot also be used for making GUI wizard interfaces.
+  particular interface. A variety of backends exist, including console-based "System.Console.Wizard.Haskeline" and 
+  "System.Console.Wizard.BasicIO", and the pure "System.Console.Wizard.Pure". It is also possible to write your 
+  own backends. While both built-in IO backends operate on a console, there is no reason why @wizards@ cannot also 
+  be used for making GUI wizard interfaces.
   .
   .
   See the github page for examples on usage:
@@ -78,10 +79,11 @@ Library
                    System.Console.Wizard.Internal
                    System.Console.Wizard.Haskeline
                    System.Console.Wizard.BasicIO
+                   System.Console.Wizard.Pure
                    
   
   -- Packages needed in order to build this package.
-  Build-depends: base == 4.*, haskeline == 0.6.*, mtl == 2.0.*, transformers == 0.2.*, MonadPrompt == 1.0.*
+  Build-depends: base == 4.*, haskeline == 0.6.*, mtl == 2.0.*, transformers == 0.2.*, MonadPrompt == 1.0.*, containers == 0.4.*
   
   -- Modules not exported by this package.
   -- Other-modules:       

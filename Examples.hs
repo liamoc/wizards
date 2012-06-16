@@ -1,6 +1,7 @@
 import System.Console.Wizard
 import System.Console.Wizard.Haskeline
 import System.Console.Haskeline
+import System.Console.Wizard.Pure
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans

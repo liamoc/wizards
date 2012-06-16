@@ -4,9 +4,11 @@
 
 Everything from interactive system scripts, to installation wizards, to full-blown shells can be implemented with the support of `wizards`.
 
-It is developed transparently on top of a `Prompt` monad, which separates out the semantics of the program from any particular interface. A variety of backends exist, including a full featured backend for Haskeline and a debug-friendly simpler implementation in terms of `System.IO` primitives. It is also possible to write your own backends. 
+It is developed transparently on top of a `Prompt` monad, which separates out the semantics of the program from any particular interface. A variety of backends exist, including a full featured backend for Haskeline, a debug-friendly simpler implementation in terms of `System.IO`
+primitives, and a completely pure implementation modelled as a function from an input string to output. It is also possible to write your 
+own backends. 
 
-While both built-in backends operate on a console, there is no reason why `wizards` cannot also be used for making GUI wizard interfaces.
+While both built-in IO backends operate on a console, there is no reason why `wizards` cannot also be used for making GUI wizard interfaces.
 
 Below are installation instructions and some educational examples.
 
@@ -43,8 +45,9 @@ Below are a series of educational examples. If you want more structured document
 ```haskell
 import System.Console.Haskeline
 import System.Console.Wizard
-import System.Console.Wizard.Haskeline
-import System.Console.Wizard.BasicIO -- choose a backend, Haskeline recommended.
+import System.Console.Wizard.Haskeline --
+import System.Console.Wizard.BasicIO   -- choose a backend, Haskeline recommended.
+import System.Console.Wizard.Pure      --
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans

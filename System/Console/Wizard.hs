@@ -39,7 +39,7 @@ import Data.Maybe
 -- | A @Wizard a@ is a conversation with the user that will result in a data type @a@, or may fail.
 --   A 'Wizard' is made up of one or more \"primitives\" (see below), composed using the 'Applicative',
 --  'Monad' and 'Alternative' instances. The 'Alternative' instance is, as you might expect, a maybe-style cascade. 
---   If the first wizard fails, the next one is tried.
+--   If the first wizard fails, the next one is tried. `mzero` can be used to induce failure directly.
 --  
 --  The 'Wizard' constructor is exported here for use when developing backends,  but it is better for end-users to 
 --  simply pretend that 'Wizard' is an opaque data type. Don't depend on this unless you have no other choice.
