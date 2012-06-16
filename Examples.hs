@@ -5,6 +5,8 @@ import System.Console.Wizard.Pure
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans
+import Data.Monoid
+
 -- Examples from the readme. Used to see if they actually work
 passwordW :: String -> Wizard b ()
 passwordW realPassword = 
@@ -47,5 +49,10 @@ missilesW = do retryMsg "" $ validator (== 'x') $ character "Press 'X' to fire t
   
 specialHistory = withSettings (defaultSettings {historyFile = Just "histfile"})
                $ line "Answers to this question are recorded in histfile" >>= output  
+
+menuExample :: Wizard b ()
+menuExample = menu "Choose a choice: " $ choice "First choice"  (outputLn "You chose the first choice")
+                                      <> choice "Second choice" (outputLn "You chose the second choice")
+
   
 main = runInputT defaultSettings $ runHaskeline $ passwordW "rosebud"

@@ -143,7 +143,7 @@ Suppose we have a parser that picks up sticks:
 ```haskell
 parseSticks :: String -> Maybe Int
 parseSticks [] = Just 0
-parseSticks ('|':r) = (+1) <$> parseSticks r
+parseSticks ('|':r) = fmap (+1) $ parseSticks r
 parseSticks (_:_) = Nothing
 ```
 
@@ -153,9 +153,23 @@ We can equip a wizard with this parser using the `parser` modifier:
 sticksW = (do s <- parser parseSticks (line "Enter sticks!: ")
               outputLn $ "I found " ++ show s ++ " sticks!")
           <|> outputLn "I found something that wasn't a stick and got confused."
+          
+main = runInputT defaultSettings $ runHaskeline $ sticksW          
 ```
 
 This will run the parseSticks parser on the user input, and, if it succeeds, output the number of sticks parsed. If it fails, it will output an error message.
+
+### Menus 
+
+Menus are constructed with `choice`, composed with `mappend` or `(<>)`, and made into a `Wizard` with `menu`.
+
+```haskell
+menuExample :: Wizard b ()
+menuExample = menu "Choose a choice: " $ choice "First choice"  (outputLn "You chose the first choice")
+                                      <> choice "Second choice" (outputLn "You chose the second choice")
+
+main = runInputT defaultSettings $ runHaskeline $ menuExample                                      
+```
 
 ## Backend-specific features
 

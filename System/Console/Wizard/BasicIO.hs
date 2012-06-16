@@ -15,6 +15,7 @@ import Control.Monad.Trans.Maybe
 --   Default text and password masks are ignored.
 --   A more full-featured back-end is based on Haskeline.
 --   Arbitrary IO actions can be performed in wizards via a 'MonadIO' instance.
+--   Menus are implemented by presenting a list of numbers and asking the user to choose an option.
 data BasicIO (m :: * -> *) r = ArbitraryIO (IO r)
 
 -- | Runs a Wizard action in the BasicIO backend.

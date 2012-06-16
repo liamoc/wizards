@@ -24,6 +24,7 @@ data UnexpectedEOI = UnexpectedEOI deriving (Show, Typeable)
 instance Exception UnexpectedEOI
 
 -- | A very simple pure backend for @wizards@, supporting input and output. Prompt strings are ignored.
+--   Input to menus should be a single line containing an index (0-based) of the menu item to select.
 data Pure (m :: * -> *) r 
 
 type PureState = ([String], Seq Char)
