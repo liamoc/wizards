@@ -56,13 +56,13 @@ instance MonadPrompt (WizardAction s (RecPrompt (WizardAction s))) (Wizard s) wh
 -- /Primitives/ are the basic building blocks for @wizards@. Use these functions to produce wizards that
 -- ask for input from the user, or output information.
 
--- | Read one line of input from the user.
+-- | Read one line of input from the user. Cannot fail (but may throw exceptions, depending on the backend).
 line :: PromptString -> Wizard b String
 line str = prompt $ Line str
 
 -- | Read one line of input, with some default text already present, before and/or after the editing cursor.
 --   Backends are not required to display this default text, or position the cursor anywhere, it is merely
---   a suggestion.
+--   a suggestion. Cannot fail (but may throw exceptions, depending on the backend).
 linePrewritten :: PromptString
                -> String  -- ^ Text to the left of the cursor
                -> String  -- ^ Text to the right of the cursor
@@ -71,17 +71,17 @@ linePrewritten p s1 s2 = prompt $ LinePreset p s1 s2
 
 -- | Read one line of password input, with an optional mask character.
 --   The exact masking behavior of the password may vary from backend to backend. The masking character
---   does not have to be honoured.
+--   does not have to be honoured. Cannot fail (but may throw exceptions, depending on the backend).
 password :: PromptString
          -> Maybe Char -- ^ Mask character, if any.
          -> Wizard b String
 password str m = prompt $ Password str m 
                  
--- | Read a single character only from input.
+-- | Read a single character only from input. Cannot fail (but may throw exceptions, depending on the backend).
 character :: PromptString -> Wizard b Char
 character = prompt . Character 
 
--- | Output a string, if the backend used supports output.
+-- | Output a string, if the backend used supports output. 
 output :: String -> Wizard b ()
 output = prompt . Output
 
@@ -110,7 +110,7 @@ defaultTo wz d = wz <|> pure d
 parser :: (a -> Maybe c) -> Wizard b a -> Wizard b c
 parser f a = a >>= liftMaybe . f
 
--- | @validator p w@ causes a wizard to fail if the output value does not satisfy the predicate @p@.
+-- | @validator p@ causes a wizard to fail if the output value does not satisfy the predicate @p@.
 validator :: (a -> Bool) -> Wizard b a -> Wizard b a
 validator = parser . ensure
 
