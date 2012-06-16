@@ -10,7 +10,7 @@ passwordW realPassword =
   let 
     w = do validator (== realPassword) $ password "Enter password: " (Just '*') 
            outputLn "The secret is 42"
-  in w <|> w <|> w <|> (outputLn "Password rejected. Goodbye!" >> mzero)
+  in w <|> w <|> w <|> (outputLn "Password rejected. Goodbye!")
 
 passwordW2 :: String -> Wizard b ()
 passwordW2 realPassword = (retryMsg "Incorrect password." 

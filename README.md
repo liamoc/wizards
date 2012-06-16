@@ -95,7 +95,7 @@ passwordW realPassword =
   let 
     w = do validator (== realPassword) $ password "Enter password: " (Just '*') 
            outputLn "The secret is 42"
-  in w <|> w <|> w <|> (outputLn "Password rejected. Goodbye!" >> mzero)
+  in w <|> w <|> w <|> (outputLn "Password rejected. Goodbye!")
 
 main = runInputT defaultSettings $ runHaskeline $ passwordW "rosebud"
 
