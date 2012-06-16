@@ -117,7 +117,7 @@ Here we use `validator` to check if the user has entered the correct password, a
 To run using the `BasicIO` backend instead, change `main` to:
 
 ```haskell
-main = runBasicIO passwordW "rosebud"
+main = runBasicIO $ passwordW "rosebud"
 ```
 
 Or, for unlimited tries, we can use the `retryMsg` function (or just `retry`):
