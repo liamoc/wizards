@@ -18,6 +18,7 @@ import Data.Typeable
 -- | A Haskeline backend for @wizards@, supporting input, output, default text, and password input.
 --   In addition, Haskeline settings can be modified for a single wizard, and arbitrary IO can be
 --   performed using the 'MonadIO' instance.
+--   Menus are implemented by presenting a list of numbers and asking the user to choose an option.
 data Haskeline m r = SetSettings (Settings IO) (m r)
                    | ArbitraryIO (IO r)
 
@@ -30,15 +31,15 @@ instance Exception UnexpectedEOF
 runHaskeline :: Wizard Haskeline a -> InputT IO (Maybe a)
 runHaskeline (Wizard c) = runRecPromptM f $ runMaybeT c
   where f :: WizardAction Haskeline (RecPrompt (WizardAction Haskeline) )  a -> InputT IO a
-        f (Line s) = getInputLine s >>= maybeToException UnexpectedEOF
-        f (Character s) = getInputChar s >>= maybeToException UnexpectedEOF
-        f (Password s m) = getPassword m s >>= maybeToException UnexpectedEOF
+        f (Line s)           = getInputLine s >>= maybeToException UnexpectedEOF
+        f (Character s)      = getInputChar s >>= maybeToException UnexpectedEOF
+        f (Password s m)     = getPassword m s >>= maybeToException UnexpectedEOF
         f (LinePreset s f b) = getInputLineWithInitial s (f,b) >>= maybeToException UnexpectedEOF 
-        f (Output s) = outputStr s
-        f (OutputLn s) = outputStrLn s
-        f (Menu p s) = runHaskeline (simpleMenu p s)
+        f (Output s)         = outputStr s
+        f (OutputLn s)       = outputStrLn s
+        f (Menu p s)         = runHaskeline (simpleMenu p s)
         f (Backend (SetSettings s v)) = liftIO $ runInputT s (runRecPromptM f v)
-        f (Backend (ArbitraryIO a)) = liftIO $ a
+        f (Backend (ArbitraryIO a))   = liftIO $ a
 
 -- | Modifies a wizard so that it will run with different Haskeline 'Settings' to the top level input monad.
 withSettings :: Settings IO -> Wizard Haskeline a -> Wizard Haskeline a

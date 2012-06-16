@@ -21,13 +21,13 @@ data BasicIO (m :: * -> *) r = ArbitraryIO (IO r)
 runBasicIO :: Wizard BasicIO a -> IO (Maybe a)
 runBasicIO (Wizard (MaybeT c)) = runRecPromptM f c
   where f :: WizardAction BasicIO (RecPrompt (WizardAction BasicIO) ) c -> IO c
-        f (Line s) = getLine
-        f (Character s) = getChar
-        f (Password s m) = getLine
+        f (Line s)           = getLine
+        f (Character s)      = getChar
+        f (Password s m)     = getLine
         f (LinePreset s f b) = getLine
-        f (Output s) = putStr s
-        f (OutputLn s) = putStrLn s
-        f (Menu p s) = runBasicIO (simpleMenu p s)
+        f (Output s)         = putStr s
+        f (OutputLn s)       = putStrLn s
+        f (Menu p s)         = runBasicIO (simpleMenu p s)
         f (Backend (ArbitraryIO a)) = a
 
 instance MonadIO (Wizard BasicIO) where
