@@ -12,6 +12,8 @@ module System.Console.Wizard
     , character 
     , output
     , outputLn
+    , menu
+    , choice
       -- * Modifiers
       -- $modifiers
     , retry
@@ -35,6 +37,7 @@ import Control.Monad.Trans.Maybe
 import Control.Monad.Reader
 import Control.Monad.Prompt
 import Data.Maybe
+import Data.Monoid
 
 -- | A @Wizard a@ is a conversation with the user that will result in a data type @a@, or may fail.
 --   A 'Wizard' is made up of one or more \"primitives\" (see below), composed using the 'Applicative',
@@ -50,6 +53,16 @@ newtype Wizard backend a = Wizard (MaybeT (RecPrompt (WizardAction backend)) a)
 instance MonadPrompt (WizardAction s (RecPrompt (WizardAction s))) (Wizard s) where    
     prompt = Wizard . lift . prompt
 
+
+
+newtype Menu b a = MenuC [(String, Wizard b a)]
+   deriving (Monoid)
+
+choice :: String -> Wizard b a -> Menu b a
+choice s w = MenuC [(s,w)]
+
+menu :: String -> Menu b a -> Wizard b a
+menu s (MenuC l) = join $ join $ fmap liftMaybe $ prompt $ Menu s l
 
 
 -- $primitives

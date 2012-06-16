@@ -5,6 +5,7 @@ module System.Console.Wizard.BasicIO
         ) where
 import System.Console.Wizard
 import System.Console.Wizard.Internal 
+import System.Console.Wizard.Internal.SimpleMenu
 import Control.Monad.Trans
 import Control.Monad.Prompt
 import Control.Monad.Trans.Maybe
@@ -26,6 +27,7 @@ runBasicIO (Wizard (MaybeT c)) = runRecPromptM f c
         f (LinePreset s f b) = getLine
         f (Output s) = putStr s
         f (OutputLn s) = putStrLn s
+        f (Menu p s) = runBasicIO (simpleMenu p s True)
         f (Backend (ArbitraryIO a)) = a
 
 instance MonadIO (Wizard BasicIO) where

@@ -7,6 +7,7 @@ module System.Console.Wizard.Haskeline
         ) where
 import System.Console.Wizard
 import System.Console.Wizard.Internal
+import System.Console.Wizard.Internal.SimpleMenu
 import System.Console.Haskeline    
 import Control.Monad.Trans
 import Control.Monad.Prompt
@@ -35,6 +36,7 @@ runHaskeline (Wizard c) = runRecPromptM f $ runMaybeT c
         f (LinePreset s f b) = getInputLineWithInitial s (f,b) >>= maybeToException UnexpectedEOF 
         f (Output s) = outputStr s
         f (OutputLn s) = outputStrLn s
+        f (Menu p s) = runHaskeline (simpleMenu p s True)
         f (Backend (SetSettings s v)) = liftIO $ runInputT s (runRecPromptM f v)
         f (Backend (ArbitraryIO a)) = liftIO $ a
 

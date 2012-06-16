@@ -6,6 +6,7 @@ module System.Console.Wizard.Pure
 
 import System.Console.Wizard
 import System.Console.Wizard.Internal 
+import System.Console.Wizard.Internal.SimpleMenu
 import Control.Monad.Trans
 import Control.Monad.State.Lazy
 import Control.Monad.Prompt
@@ -35,9 +36,11 @@ crashIfNull = do (x, y ) <- get
 runPure :: Wizard Pure a     -- ^ Wizard to run
         -> String            -- ^ Input to use
         -> (Maybe a, String) -- ^ (ReturnValue, Output)
-runPure (Wizard (MaybeT c)) s = let (r, (_,o)) = runState (runRecPromptM f c) (lines s, empty)
-                                 in (r, toList o)
-  where f :: WizardAction Pure (RecPrompt (WizardAction Pure) ) c -> State PureState c
+runPure w s = let (r, (_,o)) = runState (run w) (lines s, empty)
+               in (r, toList o)
+  where run :: Wizard Pure a -> State PureState (Maybe a)
+        run (Wizard (MaybeT c)) = runRecPromptM f c       
+        f :: WizardAction Pure (RecPrompt (WizardAction Pure) ) c -> State PureState c
         f (Line s) = do crashIfNull
                         x <- head . fst <$> get
                         modify (first tail)
@@ -53,6 +56,7 @@ runPure (Wizard (MaybeT c)) s = let (r, (_,o)) = runState (runRecPromptM f c) (l
                                  return r
         f (Password s _) = f (Line s)
         f (LinePreset s _ _) = f (Line s)
+        f (Menu p m) = run (simpleMenu p m False)
         f (Output s) = modify (second (>< fromList s))
                     >> modify (\s -> s `seq` s)
         f (OutputLn s) = modify (second $ (|> '\n') . (>< fromList s))

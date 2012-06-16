@@ -4,6 +4,7 @@ module System.Console.Wizard.Internal ( WizardAction (..)
                                       -- $backend
                                       ) where
 
+
 type PromptString = String 
 
 -- | Internally, a 'Wizard' is essentially a prompt monad with a 'WizardAction'. A constructor exists for each primitive action, as well
@@ -19,6 +20,7 @@ data WizardAction :: ((* -> *) -> * -> *) -> (* -> *) -> * -> * where
     Character  :: PromptString -> WizardAction b m Char
     Output     :: String       -> WizardAction b m ()
     OutputLn   :: String       -> WizardAction b m ()    
+    Menu       :: PromptString -> [(String, v)] -> WizardAction b m (Maybe v)
     Backend    :: b m a        -> WizardAction b m a
 -- $backend
 --   A short tutorial on writing backends.
