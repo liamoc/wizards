@@ -8,6 +8,13 @@ It is developed transparently on top of a `Prompt` monad, which separates out th
 
 While both built-in backends operate on a console, there is no reason why `wizards` cannot also be used for making GUI wizard interfaces.
 
+Below are installation instructions and some educational examples.
+
+Information on how to write backends, as well as structured API documentation is available on Hackage:
+
+http://hackage.haskell.org/package/wizards
+
+(Or, you can just run `cabal haddock` to generate the documentation from the source).
 
 ## Installing
 
@@ -95,7 +102,7 @@ passwordW realPassword =
   let 
     w = do validator (== realPassword) $ password "Enter password: " (Just '*') 
            outputLn "The secret is 42"
-  in w <|> w <|> w <|> (outputLn "Password rejected. Goodbye!")
+  in w <|> w <|> w <|> outputLn "Password rejected. Goodbye!"
 
 main = runInputT defaultSettings $ runHaskeline $ passwordW "rosebud"
 
