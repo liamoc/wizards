@@ -51,6 +51,7 @@ import System.Console.Wizard.Pure      --
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans
+import Data.Monoid
 ```
 ### Student Records
 
