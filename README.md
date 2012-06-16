@@ -39,13 +39,15 @@ import System.Console.Wizard
 import System.Console.Wizard.Haskeline
 import System.Console.Wizard.BasicIO -- choose a backend, Haskeline recommended.
 import Control.Applicative
+import Control.Monad
+import Control.Monad.Trans
 ```
 ### Student Records
 
-This example demonstrates use of the `Applicative` instance to build up data structures, `retry`, `inRange`, `defaultTo`, and `readParser`.
+This example demonstrates use of the `Applicative` instance to build up data structures, `retry`, `inRange`, `defaultTo`, and `parseRead`.
 
 
-Suppose we have a `Student` data type, that contains a name and a class number (which we shall say must be in the interval [1,5].
+Suppose we have a `Student` data type, that contains a name and a class number (which we shall say must be in the interval [1,5]).
 
 ```haskell
 type Name = String
@@ -64,7 +66,7 @@ A `Class` must be between 1 and 5. If the user enters nothing, we will default t
 ```haskell
 classWizard = retry 
             $ inRange (1,5) 
-            $ readParser 
+            $ parseRead 
             $ nonEmpty (line "Class[1]: ") `defaultTo` "1"
 ```
 
@@ -88,7 +90,7 @@ This example demonstrates masked input, failure (using `Alternative`), and `retr
 Ask for a password three times, then fail:
 
 ```haskell
-passwordW :: Wizard b String
+passwordW :: String -> Wizard b ()
 passwordW realPassword = 
   let 
     w = do validator (== realPassword) $ password "Enter password: " (Just '*') 
@@ -111,7 +113,7 @@ Or, for unlimited tries, we can use the `retryMsg` function (or just `retry`):
 
 ```haskell
 
-passwordW :: Wizard b String
+passwordW :: String -> Wizard b ()
 passwordW realPassword = (retryMsg "Incorrect password." 
                        $ validator (== realPassword) 
                        $ password "Enter password: " (Just '*'))
@@ -132,14 +134,15 @@ Suppose we have a parser that picks up sticks:
 parseSticks :: String -> Maybe Int
 parseSticks [] = Just 0
 parseSticks ('|':r) = (+1) <$> parseSticks r
-parseSticks (_:r) = Nothing
+parseSticks (_:_) = Nothing
 ```
 
 We can equip a wizard with this parser using the `parser` modifier:
 
 ```haskell
-sticksW =  parseSticks (line "Enter sticks!: ") >>= (\s -> outputLn $ "I found " ++ s ++ "sticks!")
-       <|> outputLn "I found something that wasn't a stick and got confused."
+sticksW = (do s <- parser parseSticks (line "Enter sticks!: ")
+              outputLn $ "I found " ++ show s ++ " sticks!")
+          <|> outputLn "I found something that wasn't a stick and got confused."
 ```
 
 This will run the parseSticks parser on the user input, and, if it succeeds, output the number of sticks parsed. If it fails, it will output an error message.
@@ -149,9 +152,12 @@ This will run the parseSticks parser on the user input, and, if it succeeds, out
 The Haskeline and BasicIO backend also supports embedding arbitrary IO actions inside wizards through a `MonadIO` instance. For example:
 
 ```haskell
-missilesW = do char "Press a key to fire the missiles"
+missilesW :: Wizard Haskeline ()
+missilesW = do retryMsg "" $ validator (== 'x') $ character "Press 'X' to fire the missiles"
                liftIO $ fireTheMissiles
 ```
+
+Note that the type signature is necessary here. Otherwise GHC will infer `Wizard b ()` and (rightly) not be able to deduce `MonadIO (Wizard b)`. 
                
 This is made backend-specific to allow a pure backend of some form to be developed in the future.
 
