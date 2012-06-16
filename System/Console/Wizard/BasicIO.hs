@@ -8,9 +8,7 @@ import System.Console.Wizard.Internal
 import Control.Monad.Trans
 import Control.Monad.Prompt
 import Control.Monad.Trans.Maybe
-import Control.Applicative((<$>))
 
-import Data.Typeable
 
 -- | A very simple standard IO backend for @wizards@, supporting input and output.
 --   Default text and password masks are ignored.
