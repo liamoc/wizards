@@ -77,14 +77,13 @@ Library
   -- Modules exported by the library.
   Exposed-modules: System.Console.Wizard
                    System.Console.Wizard.Internal
-                   System.Console.Wizard.Internal.SimpleMenu
                    System.Console.Wizard.Haskeline
                    System.Console.Wizard.BasicIO
                    System.Console.Wizard.Pure
                    
   
   -- Packages needed in order to build this package.
-  Build-depends: base == 4.*, haskeline == 0.6.*, mtl == 2.0.*, transformers == 0.2.*, MonadPrompt == 1.0.*, containers == 0.4.*
+  Build-depends: base == 4.*, haskeline == 0.6.*, mtl == 2.0.*, transformers == 0.2.*, control-monad-free ==0.5.*, containers == 0.4.*
   
   -- Modules not exported by this package.
   -- Other-modules:       

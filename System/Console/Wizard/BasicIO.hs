@@ -1,35 +1,20 @@
-{-# LANGUAGE DeriveDataTypeable, FlexibleInstances, GADTs, KindSignatures #-}
-module System.Console.Wizard.BasicIO
-        ( BasicIO
-        , runBasicIO
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, TypeOperators #-}
+module System.Console.Wizard.BasicIO 
+        ( BasicIO (..)
+        , basicIO
         ) where
 import System.Console.Wizard
-import System.Console.Wizard.Internal 
-import System.Console.Wizard.Internal.SimpleMenu
+import System.Console.Wizard.Internal
 import Control.Monad.Trans
-import Control.Monad.Prompt
 import Control.Monad.Trans.Maybe
 
+instance Run Output      (IO) where runAlgebra (Output s w)        = putStr s   >> w
+instance Run OutputLn    (IO) where runAlgebra (OutputLn s w)      = putStrLn s >> w
+instance Run Line        (IO) where runAlgebra (Line s w)          = getLine    >>= w
+instance Run Character   (IO) where runAlgebra (Character s w)     = getChar    >>= w
+instance Run ArbitraryIO (IO) where runAlgebra (ArbitraryIO iov f) = iov        >>= f
 
--- | A very simple standard IO backend for @wizards@, supporting input and output.
---   Default text and password masks are ignored.
---   A more full-featured back-end is based on Haskeline.
---   Arbitrary IO actions can be performed in wizards via a 'MonadIO' instance.
---   Menus are implemented by presenting a list of numbers and asking the user to choose an option.
-data BasicIO (m :: * -> *) r = ArbitraryIO (IO r)
+type BasicIO = Output :+: OutputLn :+: Line :+: Character :+: ArbitraryIO :+: Empty
 
--- | Runs a Wizard action in the BasicIO backend.
-runBasicIO :: Wizard BasicIO a -> IO (Maybe a)
-runBasicIO (Wizard (MaybeT c)) = runRecPromptM f c
-  where f :: WizardAction BasicIO (RecPrompt (WizardAction BasicIO) ) c -> IO c
-        f (Line s)           = getLine
-        f (Character s)      = getChar
-        f (Password s m)     = getLine
-        f (LinePreset s f b) = getLine
-        f (Output s)         = putStr s
-        f (OutputLn s)       = putStrLn s
-        f (Menu p s)         = runBasicIO (simpleMenu p s)
-        f (Backend (ArbitraryIO a)) = a
-
-instance MonadIO (Wizard BasicIO) where
-    liftIO = prompt . Backend . ArbitraryIO
+basicIO :: Wizard BasicIO a -> Wizard BasicIO a
+basicIO = id

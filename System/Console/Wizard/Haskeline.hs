@@ -1,53 +1,42 @@
-{-# LANGUAGE DeriveDataTypeable, FlexibleInstances, GADTs #-}
+{-# LANGUAGE DeriveDataTypeable, DeriveFunctor, FlexibleInstances, FlexibleContexts, MultiParamTypeClasses, TypeOperators #-}
 module System.Console.Wizard.Haskeline 
-        ( Haskeline
-        , UnexpectedEOF (..)
-        , runHaskeline
+        ( UnexpectedEOF (..)
+        , Haskeline (..)
+        , haskeline
         , withSettings
         ) where
 import System.Console.Wizard
 import System.Console.Wizard.Internal
-import System.Console.Wizard.Internal.SimpleMenu
 import System.Console.Haskeline    
 import Control.Monad.Trans
-import Control.Monad.Prompt
 import Control.Monad.Trans.Maybe
 import Control.Exception
 import Data.Typeable
 
--- | A Haskeline backend for @wizards@, supporting input, output, default text, and password input.
---   In addition, Haskeline settings can be modified for a single wizard, and arbitrary IO can be
---   performed using the 'MonadIO' instance.
---   Menus are implemented by presenting a list of numbers and asking the user to choose an option.
-data Haskeline m r = SetSettings (Settings IO) (m r)
-                   | ArbitraryIO (IO r)
 
 -- | The Haskeline back-end will throw this exception if EOF is encountered
 --   when it is not expected. Specifically, when actions such as 'getInputLine' return 'Nothing'.
 data UnexpectedEOF = UnexpectedEOF deriving (Show, Typeable)
 instance Exception UnexpectedEOF
 
--- | Runs a Wizard action in the Haskeline backend.
-runHaskeline :: Wizard Haskeline a -> InputT IO (Maybe a)
-runHaskeline (Wizard c) = runRecPromptM f $ runMaybeT c
-  where f :: WizardAction Haskeline (RecPrompt (WizardAction Haskeline) )  a -> InputT IO a
-        f (Line s)           = getInputLine s >>= maybeToException UnexpectedEOF
-        f (Character s)      = getInputChar s >>= maybeToException UnexpectedEOF
-        f (Password s m)     = getPassword m s >>= maybeToException UnexpectedEOF
-        f (LinePreset s f b) = getInputLineWithInitial s (f,b) >>= maybeToException UnexpectedEOF 
-        f (Output s)         = outputStr s
-        f (OutputLn s)       = outputStrLn s
-        f (Menu p s)         = runHaskeline (simpleMenu p s)
-        f (Backend (SetSettings s v)) = liftIO $ runInputT s (runRecPromptM f v)
-        f (Backend (ArbitraryIO a))   = liftIO $ a
+data WithSettings w = WithSettings (Settings IO) w deriving (Functor) 
+
+instance Run Output         (InputT IO) where runAlgebra (Output s w)               = outputStr s                       >> w
+instance Run OutputLn       (InputT IO) where runAlgebra (OutputLn s w)             = outputStrLn s                     >> w
+instance Run Line           (InputT IO) where runAlgebra (Line s w)                 = getInputLine s                    >>= mEof w
+instance Run Character      (InputT IO) where runAlgebra (Character s w)            = getInputChar s                    >>= mEof w
+instance Run LinePrewritten (InputT IO) where runAlgebra (LinePrewritten p s1 s2 w) = getInputLineWithInitial p (s1,s2) >>= mEof w
+instance Run Password       (InputT IO) where runAlgebra (Password p mc w)          = getPassword mc p                  >>= mEof w
+instance Run ArbitraryIO    (InputT IO) where runAlgebra (ArbitraryIO iov f)        = liftIO iov                        >>= f
+instance Run WithSettings   (InputT IO) where runAlgebra (WithSettings sets w)      = liftIO (runInputT sets w)
+
+mEof = maybe (throw UnexpectedEOF)    
+
+type Haskeline = Output :+: OutputLn :+: Line :+: Character :+: LinePrewritten :+: Password :+: ArbitraryIO :+: WithSettings :+: Empty
+
+haskeline :: Wizard Haskeline a -> Wizard Haskeline a
+haskeline = id
 
 -- | Modifies a wizard so that it will run with different Haskeline 'Settings' to the top level input monad.
-withSettings :: Settings IO -> Wizard Haskeline a -> Wizard Haskeline a
-withSettings sets (Wizard (MaybeT v)) = Wizard $ MaybeT $ prompt $ Backend $ SetSettings sets $ v
-
-instance MonadIO (Wizard Haskeline) where
-    liftIO = prompt . Backend . ArbitraryIO
-
-maybeToException :: (Monad m, Exception e) => e -> Maybe a -> m a
-maybeToException e (Just v) = return v
-maybeToException e (Nothing) = throw e
+withSettings :: (WithSettings :<: b) => Settings IO -> Wizard b a -> Wizard b a
+withSettings sets (Wizard (MaybeT v)) = Wizard $ MaybeT $ inject (WithSettings sets v)

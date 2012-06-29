@@ -1,15 +1,14 @@
-{-# LANGUAGE DeriveDataTypeable, FlexibleInstances, GADTs, KindSignatures, EmptyDataDecls, DoAndIfThenElse #-}
+{-# LANGUAGE DeriveDataTypeable, FlexibleInstances, MultiParamTypeClasses, FlexibleInstances, TypeOperators, DoAndIfThenElse #-}
 module System.Console.Wizard.Pure
-        ( Pure
+        ( Pure (..)
+        , UnexpectedEOI (..)
         , runPure
         ) where
 
 import System.Console.Wizard
 import System.Console.Wizard.Internal 
-import System.Console.Wizard.Internal.SimpleMenu
 import Control.Monad.Trans
 import Control.Monad.State.Lazy
-import Control.Monad.Prompt
 import Control.Monad.Trans.Maybe
 import Control.Applicative((<$>))
 import Data.Typeable
@@ -23,43 +22,46 @@ import Data.Foldable(toList)
 data UnexpectedEOI = UnexpectedEOI deriving (Show, Typeable)
 instance Exception UnexpectedEOI
 
--- | A very simple pure backend for @wizards@, supporting input and output. Prompt strings are ignored.
---   Input to menus should be a single line containing an index (0-based) of the menu item to select.
-data Pure (m :: * -> *) r 
-
 type PureState = ([String], Seq Char)
+
+runPure :: Wizard Pure a -> String -> (Maybe a, String)
+runPure wz input = let (a,(_,o)) = runState (run wz) (lines input, empty) 
+                       in (a, toList o)
+
+getPureLine :: State PureState String
+getPureLine = do crashIfNull
+                 x <- head . fst <$> get
+                 modify (first tail)
+                 return x
 
 crashIfNull :: State PureState ()
 crashIfNull = do (x, y ) <- get
                  when (null x) $ throw UnexpectedEOI
 
--- | Runs a Wizard action in the Pure backend. Returns all output as a string and the return value, if any.
-runPure :: Wizard Pure a     -- ^ Wizard to run
-        -> String            -- ^ Input to use
-        -> (Maybe a, String) -- ^ (ReturnValue, Output)
-runPure w s = let (r, (_,o)) = runState (run w) (lines s, empty)
-               in (r, toList o)
-  where run :: Wizard Pure a -> State PureState (Maybe a)
-        run (Wizard (MaybeT c)) = runRecPromptM f c       
-        f :: WizardAction Pure (RecPrompt (WizardAction Pure) ) c -> State PureState c
-        f (Line s) = do crashIfNull
-                        x <- head . fst <$> get
-                        modify (first tail)
-                        return x
-        f (Character s) = do crashIfNull
-                             x <- null . head . fst <$> get
-                             if x then do
-                                 modify (first tail)
-                                 return '\n'
-                             else do
-                                 r <- head . head . fst <$> get
-                                 modify (first (\ (x : r) -> tail x : r))
-                                 return r
-        f (Password s _) = f (Line s)
-        f (LinePreset s _ _) = f (Line s)
-        f (Menu p m) = run (simpleMenu p m)
-        f (Output s) = modify (second (>< fromList s))
-                    >> modify (\s -> s `seq` s)
-        f (OutputLn s) = modify (second $ (|> '\n') . (>< fromList s))
-                      >> modify (\s -> s `seq` s)
+getPureChar :: State PureState Char
+getPureChar = do crashIfNull
+                 x <- null . head . fst <$> get
+                 if x then do 
+                    modify (first tail)
+                    return '\n'
+                 else do
+                    r <- head . head . fst <$> get
+                    modify (first (\ (x : r) -> tail x : r))
+                    return r
+                    
+outputPure :: String -> State PureState ()                    
+outputPure s = modify (second (>< fromList s))
+            >> modify (\s -> s `seq` s)
+
+outputLnPure :: String -> State PureState ()                    
+outputLnPure s = modify (second $ (|> '\n') . (>< fromList s))
+              >> modify (\s -> s `seq` s)
+
+
+instance Run Output      (State PureState) where runAlgebra (Output s w)        = outputPure s   >> w
+instance Run OutputLn    (State PureState) where runAlgebra (OutputLn s w)      = outputLnPure s >> w
+instance Run Line        (State PureState) where runAlgebra (Line s w)          = getPureLine    >>= w
+instance Run Character   (State PureState) where runAlgebra (Character s w)     = getPureChar    >>= w
+
+type Pure = Output :+: OutputLn :+: Line :+: Character :+: Empty
 

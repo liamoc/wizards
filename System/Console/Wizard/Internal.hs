@@ -1,27 +1,82 @@
-{-# LANGUAGE GADTs, KindSignatures #-}
-module System.Console.Wizard.Internal ( WizardAction (..)
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, DeriveFunctor, FlexibleContexts, TypeOperators, GeneralizedNewtypeDeriving, Trustworthy, ExistentialQuantification, EmptyDataDecls #-}
+module System.Console.Wizard.Internal ( Wizard (..)
                                       , PromptString (..)
+                                      , (:+:) (..)
+                                      , (:<:) (..)
+                                      , inject
+                                      , Run (..)
+                                      , run
+                                      , Output (..)
+                                      , OutputLn (..)
+                                      , Line (..)
+                                      , LinePrewritten (..)
+                                      , Password (..)
+                                      , Character (..)
+                                      , ArbitraryIO (..)
+                                      , Empty (..)
                                       -- $backend
                                       ) where
+import Control.Monad.Free
+import Control.Monad.Trans.Maybe
+import Control.Applicative
+
+type PromptString = String
+
+data (f :+: g) w = Inl (f w) | Inr (g w) deriving Functor
+
+class (Functor sub, Functor sup) => sub :<: sup where
+   inj :: sub a -> sup a
+
+instance Functor f => f :<: f where inj = id
+instance (Functor f, Functor g) => f :<: (f :+: g) where inj = Inl
+instance (Functor f, Functor g, Functor h, f :<: g) => f :<: (h :+: g) where inj = Inr . inj
+
+inject :: (g :<: f ) => g (Free f a) -> Free f a
+inject = Impure . inj
+
+class Run a b where
+   runAlgebra :: a (b v) -> b v 
+
+instance (Run f b, Run g b) => Run (f :+: g) b where
+   runAlgebra (Inl r) = runAlgebra r
+   runAlgebra (Inr r) = runAlgebra r
 
 
-type PromptString = String 
+infixr 9 :+:
 
--- | Internally, a 'Wizard' is essentially a prompt monad with a 'WizardAction'. A constructor exists for each primitive action, as well
---   as a special \"escape hatch\" constructor ('Backend') used for writing backend-specific primitives and modifiers.
---   Each back-end has a corresponding data type, used as a type parameter for 'Wizard'. This data type is usually opaque, but internally
---   specifies additional primitive actions that are specific to the back-end.
---   'WizardAction' is parameterised by this data type (for use in the 'Backend' constructor), the prompt monad itself (so that modifiers
---   can be made as well as primitives) and the return type of the action.
-data WizardAction :: ((* -> *) -> * -> *) -> (* -> *) -> * -> * where
-    Line       :: PromptString -> WizardAction b m String
-    LinePreset :: PromptString -> String -> String -> WizardAction b m String
-    Password   :: PromptString -> Maybe Char -> WizardAction b m String
-    Character  :: PromptString -> WizardAction b m Char
-    Output     :: String       -> WizardAction b m ()
-    OutputLn   :: String       -> WizardAction b m ()    
-    Menu       :: PromptString -> [(String, v)] -> WizardAction b m (Maybe v)
-    Backend    :: b m a        -> WizardAction b m a
+
+data Output w = Output String w deriving Functor
+data OutputLn w = OutputLn String w deriving Functor
+data Line w = Line PromptString (String -> w) deriving Functor
+data Character w = Character PromptString (Char -> w) deriving Functor
+data LinePrewritten w = LinePrewritten PromptString String String (String -> w) deriving Functor
+data Password w = Password PromptString (Maybe Char) (String -> w) deriving Functor
+data ArbitraryIO w = forall a. ArbitraryIO (IO a) (a -> w) 
+data Empty w deriving Functor
+instance Run Empty b where runAlgebra = undefined
+instance Functor (ArbitraryIO) where
+    fmap f (ArbitraryIO iov f') = ArbitraryIO iov (fmap f f')
+
+-- | A @Wizard a@ is a conversation with the user that will result in a data type @a@, or may fail.
+--   A 'Wizard' is made up of one or more \"primitives\" (see below), composed using the 'Applicative',
+--  'Monad' and 'Alternative' instances. The 'Alternative' instance is, as you might expect, a maybe-style cascade. 
+--   If the first wizard fails, the next one is tried. `mzero` can be used to induce failure directly.
+--  
+--  The 'Wizard' constructor is exported here for use when developing backends,  but it is better for end-users to 
+--  simply pretend that 'Wizard' is an opaque data type. Don't depend on this unless you have no other choice.
+-- 
+--  'Wizard's are, internally, just a maybe transformer over a free monad built from some coproduct of functors,
+--  each of which is a primitive action.
+newtype Wizard backend a = Wizard (MaybeT (Free backend) a)
+      deriving (Monad, Functor, Applicative, Alternative, MonadPlus)
+
+run' :: (Functor f, Monad b,  Run f b) => Free f a -> b a
+run' = foldFree return runAlgebra
+
+run :: (Functor f, Monad b,  Run f b) => Wizard f a -> b (Maybe a)
+run (Wizard c) = run' (runMaybeT c)
+
+
 -- $backend
 --   A short tutorial on writing backends.
 --
