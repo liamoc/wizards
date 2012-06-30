@@ -137,11 +137,6 @@ passwordW realPassword =
 
 Here we use `validator` to check if the user has entered the correct password, and, if so, print out a secret message.
 
-```haskell
-main :: IO ()
-main = void $  runInputT defaultSettings $ run $ haskeline $ passwordW "rosebud"
-```
-
 Or, for unlimited tries, we can use the `retryMsg` function (or just `retry`):
 
 ```haskell
@@ -151,7 +146,25 @@ passwordW2 realPassword = (retryMsg "Incorrect password."
                        $ password "Enter password: " (Just '*'))
                       >> outputLn "The secret is 42"            
 ```
+To run this in the Haskeline back-end, we can simply use it as follows:
 
+```haskell
+main :: IO ()
+main = void $  runInputT defaultSettings $ run $ haskeline $ passwordW "rosebud"
+```
+
+The Basic IO back-end, however, doesn't support password input. We can extend it to simply read a line of unmasked text for password input (i.e ignoring the mask character) easily; by importing the relevant Shim module:
+
+```haskell
+-- don't import this with Haskeline, or Overlapping instances will muck up your password input
+import System.Console.Wizard.Shim.Password
+```
+
+And running it with the extension, like so:
+
+```haskell
+main = void $ run $ (passwordW "rosebud" :: Wizard (Password :+: BasicIO) ())
+```
 
 ### Counting sticks (custom parsers)
 

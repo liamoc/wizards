@@ -8,6 +8,7 @@ module System.Console.Wizard
     , PromptString (..)
     , run
     , (:<:)
+    , (:+:)
       -- * Primitives
       -- $primitives
     , Line  

@@ -2,7 +2,7 @@
 module System.Console.Wizard.Internal ( Wizard (..)
                                       , PromptString (..)
                                       , (:+:) (..)
-                                      , (:<:) (..)
+                                      , (:<:)
                                       , inject
                                       , Run (..)
                                       , run
@@ -40,7 +40,7 @@ newtype Wizard backend a = Wizard (MaybeT (Free backend) a)
 -- | Coproduct of two functors
 data (f :+: g) w = Inl (f w) | Inr (g w) deriving Functor
 
--- | Subsumption of two functors
+-- | Subsumption of two functors. You shouldn't define any of your own instances of this when writing back-ends, rely only on GeneralizedNewtypeDeriving.
 class (Functor sub, Functor sup) => sub :<: sup where
    inj :: sub a -> sup a
 
