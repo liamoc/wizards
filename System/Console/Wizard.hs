@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, TypeOperators #-}
+{-# LANGUAGE FlexibleContexts, TypeOperators, Trustworthy #-}
 -- Necessary for MonadIO instance.
 {-# LANGUAGE UndecidableInstances #-}
 module System.Console.Wizard 
@@ -6,14 +6,23 @@ module System.Console.Wizard
       -- $intro
       Wizard (..)   
     , PromptString (..)
+    , run
+    , (:<:)
       -- * Primitives
       -- $primitives
+    , Line  
     , line
+    , LinePrewritten
     , linePrewritten
+    , Password
     , password
-    , character 
+    , Character
+    , character
+    , Output 
     , output
+    , OutputLn
     , outputLn
+    , ArbitraryIO
       -- * Modifiers
       -- $modifiers
     , retry
@@ -67,8 +76,7 @@ character p = Wizard $ lift $ inject (Character p Pure)
 instance (ArbitraryIO :<: b) => MonadIO (Wizard b) where
     liftIO v = Wizard $ lift $ inject (ArbitraryIO v Pure)  
 -- | Read one line of input, with some default text already present, before and/or after the editing cursor.
---   Backends are not required to display this default text, or position the cursor anywhere, it is merely
---   a suggestion. Cannot fail (but may throw exceptions, depending on the backend).
+---  Cannot fail (but may throw exceptions, depending on the backend).
 linePrewritten :: (LinePrewritten :<: b) 
                => PromptString
                -> String  -- ^ Text to the left of the cursor
@@ -77,8 +85,7 @@ linePrewritten :: (LinePrewritten :<: b)
 linePrewritten p s1 s2 = Wizard $ lift $ inject (LinePrewritten p s1 s2 Pure)
 
 -- | Read one line of password input, with an optional mask character.
---   The exact masking behavior of the password may vary from backend to backend. The masking character
---   does not have to be honoured. Cannot fail (but may throw exceptions, depending on the backend).
+---  Cannot fail (but may throw exceptions, depending on the backend).
 password :: (Password :<: b)
          => PromptString
          -> Maybe Char -- ^ Mask character, if any.
@@ -93,7 +100,7 @@ password p mc = Wizard $ lift $ inject (Password p mc Pure)
 retry :: Functor b => Wizard b a -> Wizard b a
 retry x = x <|> retry x
 
--- | Same as 'retry', except the error message can be specified.
+-- | Same as 'retry', except an error message can be specified.
 retryMsg :: (OutputLn :<: b) => String -> Wizard b a -> Wizard b a
 retryMsg msg x = x <|> (outputLn msg >> retryMsg msg x)
                     

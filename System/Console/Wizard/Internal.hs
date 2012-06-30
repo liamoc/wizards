@@ -6,6 +6,7 @@ module System.Console.Wizard.Internal ( Wizard (..)
                                       , inject
                                       , Run (..)
                                       , run
+                                      -- $functors
                                       , Output (..)
                                       , OutputLn (..)
                                       , Line (..)
@@ -20,44 +21,10 @@ import Control.Monad.Free
 import Control.Monad.Trans.Maybe
 import Control.Applicative
 
+-- | A string for a prompt
 type PromptString = String
 
-data (f :+: g) w = Inl (f w) | Inr (g w) deriving Functor
-
-class (Functor sub, Functor sup) => sub :<: sup where
-   inj :: sub a -> sup a
-
-instance Functor f => f :<: f where inj = id
-instance (Functor f, Functor g) => f :<: (f :+: g) where inj = Inl
-instance (Functor f, Functor g, Functor h, f :<: g) => f :<: (h :+: g) where inj = Inr . inj
-
-inject :: (g :<: f ) => g (Free f a) -> Free f a
-inject = Impure . inj
-
-class Run a b where
-   runAlgebra :: a (b v) -> b v 
-
-instance (Run f b, Run g b) => Run (f :+: g) b where
-   runAlgebra (Inl r) = runAlgebra r
-   runAlgebra (Inr r) = runAlgebra r
-
-
-infixr 9 :+:
-
-
-data Output w = Output String w deriving Functor
-data OutputLn w = OutputLn String w deriving Functor
-data Line w = Line PromptString (String -> w) deriving Functor
-data Character w = Character PromptString (Char -> w) deriving Functor
-data LinePrewritten w = LinePrewritten PromptString String String (String -> w) deriving Functor
-data Password w = Password PromptString (Maybe Char) (String -> w) deriving Functor
-data ArbitraryIO w = forall a. ArbitraryIO (IO a) (a -> w) 
-data Empty w deriving Functor
-instance Run Empty b where runAlgebra = undefined
-instance Functor (ArbitraryIO) where
-    fmap f (ArbitraryIO iov f') = ArbitraryIO iov (fmap f f')
-
--- | A @Wizard a@ is a conversation with the user that will result in a data type @a@, or may fail.
+-- | A @Wizard b a@ is a conversation with the user via back-end @b@ that will result in a data type @a@, or may fail.
 --   A 'Wizard' is made up of one or more \"primitives\" (see below), composed using the 'Applicative',
 --  'Monad' and 'Alternative' instances. The 'Alternative' instance is, as you might expect, a maybe-style cascade. 
 --   If the first wizard fails, the next one is tried. `mzero` can be used to induce failure directly.
@@ -70,10 +37,53 @@ instance Functor (ArbitraryIO) where
 newtype Wizard backend a = Wizard (MaybeT (Free backend) a)
       deriving (Monad, Functor, Applicative, Alternative, MonadPlus)
 
-run' :: (Functor f, Monad b,  Run f b) => Free f a -> b a
+-- | Coproduct of two functors
+data (f :+: g) w = Inl (f w) | Inr (g w) deriving Functor
+
+-- | Subsumption of two functors
+class (Functor sub, Functor sup) => sub :<: sup where
+   inj :: sub a -> sup a
+
+instance Functor f => f :<: f where inj = id
+instance (Functor f, Functor g) => f :<: (f :+: g) where inj = Inl
+instance (Functor f, Functor g, Functor h, f :<: g) => f :<: (h :+: g) where inj = Inr . inj
+
+-- | Injection function for free monads, see \"Data Types a la Carte\" from Walter Swierstra, @http:\/\/www.cs.ru.nl\/~W.Swierstra\/Publications\/DataTypesALaCarte.pdf@
+inject :: (g :<: f ) => g (Free f a) -> Free f a
+inject = Impure . inj
+
+-- | A class for implementing actions on a backend. E.g Run IO Output provides an interpreter for the Output action in the IO monad.
+class Run a b where
+   runAlgebra :: b (a v) -> a v 
+
+instance (Run b f, Run b g) => Run b (f :+: g) where
+   runAlgebra (Inl r) = runAlgebra r
+   runAlgebra (Inr r) = runAlgebra r
+
+infixr 9 :+:
+
+-- $functors
+--  Each of the following functors is a primitive action. A back-end provides interpreters for these actions using the 'Run' class,
+
+data Output w = Output String w deriving Functor
+data OutputLn w = OutputLn String w deriving Functor
+data Line w = Line PromptString (String -> w) deriving Functor
+data Character w = Character PromptString (Char -> w) deriving Functor
+data LinePrewritten w = LinePrewritten PromptString String String (String -> w) deriving Functor
+data Password w = Password PromptString (Maybe Char) (String -> w) deriving Functor
+data ArbitraryIO w = forall a. ArbitraryIO (IO a) (a -> w) 
+data Empty w deriving Functor
+instance Run b Empty where runAlgebra = undefined
+instance Functor (ArbitraryIO) where
+    fmap f (ArbitraryIO iov f') = ArbitraryIO iov (fmap f f')
+
+
+
+run' :: (Functor f, Monad b,  Run b f) => Free f a -> b a
 run' = foldFree return runAlgebra
 
-run :: (Functor f, Monad b,  Run f b) => Wizard f a -> b (Maybe a)
+-- | Run a wizard using some back-end.
+run :: (Functor f, Monad b,  Run b f) => Wizard f a -> b (Maybe a)
 run (Wizard c) = run' (runMaybeT c)
 
 
@@ -82,61 +92,84 @@ run (Wizard c) = run' (runMaybeT c)
 --
 --   Backends consist of two main components:
 --   
---      1. A back-end data type (the type parameter to 'Wizard'), which includes constructors
---         for any primitive actions or modifiers that are specific to the back-end.
+--      1. A monad, M, in which the primitive actions are interpreted. 'Run' instances specify an interpreter for each supported
+--         action, e.g Run M Output will specify an interpreter for the Output primitive action in the monad M.
 --
---      2. An interpreter function, of type @Wizard DataType a -> B (Maybe a)@ for some type @B@ (depending on the backend).
---         Typically this function will provide semantics for each 'WizardAction' using 'runRecPromptM' or similar.
---   
---   The 'Backend' constructor can be used to add back-end specific primitives and modifiers.
+--      2. A newtype, Backend a, which is a functor, usually implemented by wrapping a coproduct of all supported features.
+--         (:<:) instances, the Functor instance, and the Run instance are provided by generalized newtype deriving.
 -- 
---   As an example, suppose I am writing a back-end to @IO@, like "System.Console.Wizard.BasicIO".
---   One additional primitive action that I might want to include is the ability to run arbitrary @IO@ actions while a wizard is running.
---   So, my backend data type will be:
+--   As an example, suppose I am writing a back-end to @IO@, like "System.Console.Wizard.BasicIO". I want to support basic input and output,
+--   and arbitrary IO, so I declare instances for 'Run' for the 'IO' monad: 
 --
--- @
--- data MyBackend (m :: * -> *) r = ArbitraryIO (IO r) -- kind signature to avoid defaulting to *
--- @
+--  @
+--  instance Run IO Output      where runAlgebra (Output s w)        = putStr s   >> w
+--  instance Run IO OutputLn    where runAlgebra (OutputLn s w)      = putStrLn s >> w
+--  instance Run IO Line        where runAlgebra (Line s w)          = getLine    >>= w
+--  instance Run IO Character   where runAlgebra (Character s w)     = getChar    >>= w
+--  instance Run IO ArbitraryIO where runAlgebra (ArbitraryIO iov f) = iov        >>= f
+--  @
+--  
+--  And then I would define the newtype for the backend, which we can call MyIOBackend:
+--  
+--  @
+--  newtype MyIOBackend a = MyIOBackend ((Output :+: OutputLn :+: Line :+: Character :+: ArbitraryIO) a)
+--                        deriving (Functor, Run IO
+--                                 , (:<:) Output
+--                                 , (:<:) OutputLn
+--                                 , (:<:) Line
+--                                 , (:<:) Character
+--                                 , (:<:) ArbitraryIO
+--                                 )
+--  @
+--
+--  A useful convenience is to provide a simple identity function to serve as a type coercion:
+--  
+--  @
+--  myIOBackend :: Wizard MyIOBackend a -> Wizard MyIOBackend a
+--  myIOBackend = id
+--  @
 -- 
---   And my interpreter function will be:
+--  One additional primitive action that I might want to include is the ability to clear the screen at a certain point.
+--  So, we define a new data type for the action:
 --
--- @
---   runWizardMyBackend :: Wizard MyBackend a -> IO a
---   runWizardMyBackend (Wizard (MaybeT c)) = runRecPromptM f c
---         where f :: WizardAction MyBackend (RecPrompt (WizardAction MyBackend)) a -> IO a  
---               f (Output s) = putStr s
---               f (...     ) = ...
---               f (Backend (ArbitraryIO io)) = io
--- @
+--  @
+--  data ClearScreen w = ClearScreen w deriving Functor -- via -XDeriveFunctor
+--  @
 -- 
--- And then the action can be easily defined:
+--  And a \"smart\" constructor for use by the user:
 --
--- @
---   runIO :: IO a -> Wizard MyBackend a
---   runIO = prompt . Backend . ArbitraryIO 
--- @
+--  @
+--  clearScreen :: (ClearScreen :\<: b) => Wizard b ()
+--  clearScreen = Wizard $ lift $ inject (ClearScreen (Pure ())) 
+--  @
 --
--- I might also want to include a /modifier/, which say, colours any output text green. Assuming I have a function
--- @
---    withGreenText :: IO a -> IO a
--- @
--- which causes any output produced by the input action to be coloured green, we can use the 'Backend' constructor to transform
--- this into a wizard modifier.
+--  (These smart constructors all follow a similar pattern. See the source of System.Console.Wizard for more examples)
+--
+--  And then we define an interpreter for it:
 -- 
--- @
---data MyBackend m r = ArbitraryIO (IO r)
---                   | GreenText (m r)
+--  @
+--  instance Run IO ArbitraryIO where runAlgebra (ClearScreen f) = clearTheScreen >> f
+--  @
 --
---runWizardMyBackend :: Wizard MyBackend
---runWizardMyBackend (Wizard (MaybeT c)) = runRecPromptM f c
---      where f :: WizardAction MyBackend (RecPrompt (WizardAction MyBackend)) a -> IO a  
---            f (Output s) = putStr s
---            f (...     ) = ...
---            f (Backend (ArbitraryIO io)) = io
---            f (Backend (GreenText a)) = withGreenText $ runRecPromptM f a
+--  Now, we can use this as-is simply by directly extending our back-end:
 --
---greenText :: Wizard MyBackend a -> Wizard MyBackend a
---greenText (Wizard (MaybeT a)) = prompt (Backend (GreenText a))
--- @
+--  @
+--  foo :: Wizard (ClearScreen :+: MyIOBackend)
+--  foo = clearScreen >> output \"Hello World!\"
+--  @
 --
+--  Or, we could modify @MyIOBackend@ to include the extension directly.
+--
+--
+--  For custom actions that /return/ output, the definition looks slightly different. Here is the definition of Line:
+--
+--  @
+--  data Line w = Line (PromptString) (String -> w) deriving Functor -- via -XDeriveFunctor
+--  @
 -- 
+--  And the smart constructor looks like this:
+--
+--  @
+--  line :: (Line :\<: b) => PromptString -> Wizard b String
+--  line s = Wizard $ lift $ inject (Line s Pure) 
+--  @

@@ -4,15 +4,13 @@
 
 Everything from interactive system scripts, to installation wizards, to full-blown shells can be implemented with the support of `wizards`.
 
-It is developed transparently on top of a `Prompt` monad, which separates out the semantics of the program from any particular interface. A variety of backends exist, including a full featured backend for Haskeline, a debug-friendly simpler implementation in terms of `System.IO`
-primitives, and a completely pure implementation modelled as a function from an input string to output. It is also possible to write your 
-own backends. 
+It is developed transparently on top of a free monad (see [Swierstra's excellent paper on this topic](http://www.cs.ru.nl/~W.Swierstra/Publications/DataTypesALaCarte.pdf)), which separates out the semantics of the program from the wizards interface. A variety of backends exist, including a full featured backend for Haskeline, a debug-friendly simpler implementation in terms of `System.IO` primitives, and a completely pure implementation modelled as a function from an input string to output. It is also possible to write your own backends, or extend the existing back-ends with new features.
 
 While both built-in IO backends operate on a console, there is no reason why `wizards` cannot also be used for making GUI wizard interfaces.
 
 Below are installation instructions and some educational examples.
 
-Information on how to write backends, as well as structured API documentation is available on Hackage:
+Information on how to write backends or extend backends, as well as structured API documentation is available on Hackage:
 
 http://hackage.haskell.org/package/wizards
 
@@ -38,21 +36,38 @@ runhaskell Setup.hs install
 
 Or, if you have cabal, you can replace `runhaskell Setup.hs` with `cabal` there.
 
-## Examples!
+## Howto
 
-Below are a series of educational examples. If you want more structured documentation, please refer to the API documentation on Hackage (or generate it with `cabal haddock`).
+A value of type `Wizard b a` is a conversation with the user via back-end `b` that will result in a value of type `a`, or fail. Monad, Applicative and Alternative instances are defined. Code can also be written monomorphically for a specific back-end:
 
 ```haskell
-import System.Console.Haskeline
-import System.Console.Wizard
-import System.Console.Wizard.Haskeline --
-import System.Console.Wizard.BasicIO   -- choose a backend, Haskeline recommended.
-import System.Console.Wizard.Pure      --
-import Control.Applicative
-import Control.Monad
-import Control.Monad.Trans
+foo :: Wizard Haskeline Int
+```
+
+Or polymorphically for many back-ends line so:
+
+```haskell
+foo :: (Output :<: b, Line :<: b) => Wizard b Int
+```
+
+This describes a `Wizard` that will result in an `Int` that runs on any back-end that supports Output and Line.
+
+Below are a series of educational examples. You'll probably need to run them with `-XOverlappingInstances`. If you want more structured documentation, please refer to the API documentation on Hackage (or generate it with `cabal haddock`).
+
+```haskell
+{-# LANGUAGE OverlappingInstances, TypeOperators, FlexibleContexts #-}  
+import System.Console.Haskeline  
+import System.Console.Wizard  
+import System.Console.Wizard.Haskeline --  
+import System.Console.Wizard.BasicIO   -- choose a backend, Haskeline recommended.  
+import System.Console.Wizard.Pure      --  
+import Control.Applicative  
+import Control.Monad  
+import Control.Monad.Trans  
 import Data.Monoid
 ```
+
+
 ### Student Records
 
 This example demonstrates use of the `Applicative` instance to build up data structures, `retry`, `inRange`, `defaultTo`, and `parseRead`.
@@ -61,20 +76,22 @@ This example demonstrates use of the `Applicative` instance to build up data str
 Suppose we have a `Student` data type, that contains a name and a class number (which we shall say must be in the interval [1,5]).
 
 ```haskell
-type Name = String
-type Class = Int 
-data Student = Student Name Class
+type Name = String  
+type Class = Int   
+data Student = Student Name Class deriving (Show)
 ```
 
 A `Name` must be a non-empty string. If the user enters an empty string, we will prompt them again:
 
 ```haskell
+nameWizard :: (Line :<: b) => Wizard b Name
 nameWizard = retry $ nonEmpty $ line "Name: "
 ```
 
 A `Class` must be between 1 and 5. If the user enters nothing, we will default to 1. If they enter an invalid string, they will be prompted again:
 
 ```haskell
+classWizard :: (Line :<: b) => Wizard b Class
 classWizard = retry 
             $ inRange (1,5) 
             $ parseRead 
@@ -84,14 +101,23 @@ classWizard = retry
 We can now populate a `Student` data type using the `Applicative` instance of `Wizard b`.
 
 ```haskell
+studentWizard :: (Line :<: b) => Wizard b Student                        
 studentWizard = Student <$> nameWizard <*> classWizard
 ```
 
 And run our wizard with the Haskeline back-end:
 
 ```haskell
-main = runInputT defaultSettings (runHaskeline studentWizard) 
-   >>= print
+main :: IO ()
+main = runInputT defaultSettings (run $ haskeline $ studentWizard)   
+   >>= print  
+```
+
+Or with the Basic IO back-end:
+
+```haskell
+main :: IO ()
+main = (run $ basicIO $ studentWizard) >>= print  
 ```
 
 ### Passwords
@@ -101,37 +127,29 @@ This example demonstrates masked input, failure (using `Alternative`), and `retr
 Ask for a password three times, then fail:
 
 ```haskell
-passwordW :: String -> Wizard b ()
-passwordW realPassword = 
+passwordW :: (Password :<: b, OutputLn :<: b) => String -> Wizard b ()  
+passwordW realPassword =   
   let 
     w = do validator (== realPassword) $ password "Enter password: " (Just '*') 
-           outputLn "The secret is 42"
-  in w <|> w <|> w <|> outputLn "Password rejected. Goodbye!"
-
-main = runInputT defaultSettings $ runHaskeline $ passwordW "rosebud"
-
+           outputLn "The secret is 42"  
+  in w <|> w <|> w <|> outputLn "Password rejected. Goodbye!"  
 ```
 
 Here we use `validator` to check if the user has entered the correct password, and, if so, print out a secret message.
 
-To run using the `BasicIO` backend instead, change `main` to:
-
 ```haskell
-main = runBasicIO $ passwordW "rosebud"
+main :: IO ()
+main = void $  runInputT defaultSettings $ run $ haskeline $ passwordW "rosebud"
 ```
 
 Or, for unlimited tries, we can use the `retryMsg` function (or just `retry`):
 
 ```haskell
-
-passwordW :: String -> Wizard b ()
-passwordW realPassword = (retryMsg "Incorrect password." 
+passwordW2 :: (Password :<: b, OutputLn :<: b) => String -> Wizard b ()  
+passwordW2 realPassword = (retryMsg "Incorrect password." 
                        $ validator (== realPassword) 
                        $ password "Enter password: " (Just '*'))
-                      >> outputLn "The secret is 42"
-
-main = runInputT defaultSettings $ runHaskeline $ passwordW "rosebud"
-          
+                      >> outputLn "The secret is 42"            
 ```
 
 
@@ -142,9 +160,9 @@ This example demonstrates using custom parse functions.
 Suppose we have a parser that picks up sticks:
 
 ```haskell
-parseSticks :: String -> Maybe Int
-parseSticks [] = Just 0
-parseSticks ('|':r) = fmap (+1) $ parseSticks r
+parseSticks :: String -> Maybe Int  
+parseSticks [] = Just 0  
+parseSticks ('|':r) = fmap (+1) $ parseSticks r  
 parseSticks (_:_) = Nothing
 ```
 
@@ -154,41 +172,43 @@ We can equip a wizard with this parser using the `parser` modifier:
 sticksW = (do s <- parser parseSticks (line "Enter sticks!: ")
               outputLn $ "I found " ++ show s ++ " sticks!")
           <|> outputLn "I found something that wasn't a stick and got confused."
-          
-main = runInputT defaultSettings $ runHaskeline $ sticksW          
+
+main :: IO ()
+main = void $ runInputT defaultSettings $ run $ haskeline $ sticksW      
 ```
 
 This will run the parseSticks parser on the user input, and, if it succeeds, output the number of sticks parsed. If it fails, it will output an error message.
 
-### Menus 
+### Menus Extension
 
 Menus are constructed with `choice`, composed with `mappend` or `(<>)`, and made into a `Wizard` with `menu`.
 
 ```haskell
-menuExample :: Wizard b ()
+menuExample :: (Menu :<: b) => Wizard b ()
 menuExample = menu "Choose a choice: " $ choice "First choice"  (outputLn "You chose the first choice")
                                       <> choice "Second choice" (outputLn "You chose the second choice")
 
-main = runInputT defaultSettings $ runHaskeline $ menuExample                                      
+main = runInputT defaultSettings $ run $ (menuExample :: Wizard (Menu :+: Haskeline) ())
 ```
 
-## Backend-specific features
+As `Menu` is an extension, it is not included by the default Haskeline back-end, however it can be easily extended as shown above.
 
-The Haskeline and BasicIO backend also supports embedding arbitrary IO actions inside wizards through a `MonadIO` instance. For example:
+## Extended features
+
+The Haskeline and BasicIO backends (or any backends that supports the `ArbitraryIO` capability) also support embedding arbitrary IO actions
+inside wizards through a `MonadIO` instance. For example:
 
 ```haskell
-missilesW :: Wizard Haskeline ()
-missilesW = do retryMsg "" $ validator (== 'x') $ character "Press 'X' to fire the missiles"
+missilesW :: (ArbitraryIO :<: b, Character :<: b) => Wizard b ()  
+missilesW = do retry $ validator (== 'x') $ character "Press 'X' to fire the missiles"
                liftIO $ fireTheMissiles
+ where fireTheMissiles = putStrLn "FIRE!"              
 ```
-
-Note that the type signature is necessary here. Otherwise GHC will infer `Wizard b ()` and (rightly) not be able to deduce `MonadIO (Wizard b)`. 
-               
-This is made backend-specific to allow a pure backend of some form to be developed in the future.
 
 Another backend-specific feature unique to the Haskeline backend allows setting Haskeline settings through a wizard modifier, for example:
 
 ```haskell
+specialHistory :: (WithSettings :<: b, Line :<: b, Output :<: b) => Wizard b ()
 specialHistory = withSettings (defaultSettings {historyFile = Just "histfile"})
-               $ line "Answers to this question are recorded in histfile" >>= output
+               $ line "Answers to this question are recorded in histfile" >>= output               
 ```

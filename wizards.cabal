@@ -36,11 +36,11 @@ Description: @wizards@ is a package designed for the quick and painless developm
   Everything from interactive system scripts, to installation wizards, to full-blown shells can be implemented with
   the support of @wizards@.
   .
-  It is developed transparently on top of a Prompt monad, which separates out the semantics of the program from any
+  It is developed transparently on top of a Free monad, which separates out the semantics of the program from any
   particular interface. A variety of backends exist, including console-based "System.Console.Wizard.Haskeline" and 
   "System.Console.Wizard.BasicIO", and the pure "System.Console.Wizard.Pure". It is also possible to write your 
-  own backends. While both built-in IO backends operate on a console, there is no reason why @wizards@ cannot also 
-  be used for making GUI wizard interfaces.
+  own backends, or extend existing back-ends with new features. While both built-in IO backends operate on a
+  console, there is no reason why @wizards@ cannot also be used for making GUI wizard interfaces.
   .
   .
   See the github page for examples on usage:
@@ -80,7 +80,7 @@ Library
                    System.Console.Wizard.Haskeline
                    System.Console.Wizard.BasicIO
                    System.Console.Wizard.Pure
-                   
+  Extensions: OverlappingInstances                   
   
   -- Packages needed in order to build this package.
   Build-depends: base == 4.*, haskeline == 0.6.*, mtl == 2.0.*, transformers == 0.2.*, control-monad-free ==0.5.*, containers == 0.4.*
