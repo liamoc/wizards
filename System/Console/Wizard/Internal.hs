@@ -14,7 +14,6 @@ module System.Console.Wizard.Internal ( Wizard (..)
                                       , Password (..)
                                       , Character (..)
                                       , ArbitraryIO (..)
-                                      , Empty (..)
                                       -- $backend
                                       ) where
 import Control.Monad.Free
@@ -72,8 +71,6 @@ data Character w = Character PromptString (Char -> w) deriving Functor
 data LinePrewritten w = LinePrewritten PromptString String String (String -> w) deriving Functor
 data Password w = Password PromptString (Maybe Char) (String -> w) deriving Functor
 data ArbitraryIO w = forall a. ArbitraryIO (IO a) (a -> w) 
-data Empty w deriving Functor
-instance Run b Empty where runAlgebra = undefined
 instance Functor (ArbitraryIO) where
     fmap f (ArbitraryIO iov f') = ArbitraryIO iov (fmap f f')
 
@@ -92,11 +89,11 @@ run (Wizard c) = run' (runMaybeT c)
 --
 --   Backends consist of two main components:
 --   
---      1. A monad, M, in which the primitive actions are interpreted. 'Run' instances specify an interpreter for each supported
---         action, e.g Run M Output will specify an interpreter for the Output primitive action in the monad M.
+--      1. A monad, @M@, in which the primitive actions are interpreted. 'Run' instances specify an interpreter for each supported
+--         action, e.g @Run M Output@ will specify an interpreter for the 'Output' primitive action in the monad M.
 --
---      2. A newtype, Backend a, which is a functor, usually implemented by wrapping a coproduct of all supported features.
---         (:<:) instances, the Functor instance, and the Run instance are provided by generalized newtype deriving.
+--      2. A newtype, e.g @Backend a@, which is a functor, usually implemented by wrapping a coproduct of all supported features.
+--         '(:<:)' instances, the 'Functor' instance, and the 'Run' instance are provided by generalized newtype deriving.
 -- 
 --   As an example, suppose I am writing a back-end to @IO@, like "System.Console.Wizard.BasicIO". I want to support basic input and output,
 --   and arbitrary IO, so I declare instances for 'Run' for the 'IO' monad: 
@@ -109,11 +106,11 @@ run (Wizard c) = run' (runMaybeT c)
 --  instance Run IO ArbitraryIO where runAlgebra (ArbitraryIO iov f) = iov        >>= f
 --  @
 --  
---  And then I would define the newtype for the backend, which we can call MyIOBackend:
+--  And then I would define the newtype for the backend, which we can call @MyIOBackend@:
 --  
 --  @
 --  newtype MyIOBackend a = MyIOBackend ((Output :+: OutputLn :+: Line :+: Character :+: ArbitraryIO) a)
---                        deriving (Functor, Run IO
+--                        deriving ( Functor, Run IO
 --                                 , (:<:) Output
 --                                 , (:<:) OutputLn
 --                                 , (:<:) Line
@@ -143,7 +140,7 @@ run (Wizard c) = run' (runMaybeT c)
 --  clearScreen = Wizard $ lift $ inject (ClearScreen (Pure ())) 
 --  @
 --
---  (These smart constructors all follow a similar pattern. See the source of System.Console.Wizard for more examples)
+--  (These smart constructors all follow a similar pattern. See the source of "System.Console.Wizard" for more examples)
 --
 --  And then we define an interpreter for it:
 -- 

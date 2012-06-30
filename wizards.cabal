@@ -7,7 +7,7 @@ Name:                wizards
 -- The package version. See the Haskell package versioning policy
 -- (http://www.haskell.org/haskellwiki/Package_versioning_policy) for
 -- standards guiding when and how versions should be incremented.
-Version:             0.1
+Version:             1.0
 
 -- A short (one-line) description of the package.
 Synopsis:            High level, generic library for interrogative user interfaces
@@ -36,7 +36,7 @@ Description: @wizards@ is a package designed for the quick and painless developm
   Everything from interactive system scripts, to installation wizards, to full-blown shells can be implemented with
   the support of @wizards@.
   .
-  It is developed transparently on top of a Free monad, which separates out the semantics of the program from any
+  It is developed transparently on top of a free monad, which separates out the semantics of the program from any
   particular interface. A variety of backends exist, including console-based "System.Console.Wizard.Haskeline" and 
   "System.Console.Wizard.BasicIO", and the pure "System.Console.Wizard.Pure". It is also possible to write your 
   own backends, or extend existing back-ends with new features. While both built-in IO backends operate on a
@@ -70,7 +70,7 @@ source-repository head
 source-repository this
    type:     git   
    location: git://github.com/liamoc/wizards.git
-   tag:      0.1
+   tag:      1.0
 
 
 Library

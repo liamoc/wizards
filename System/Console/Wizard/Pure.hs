@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable, FlexibleInstances, MultiParamTypeClasses, FlexibleInstances, TypeOperators, DoAndIfThenElse, GeneralizedNewtypeDeriving, Trustworthy #-}
 module System.Console.Wizard.Pure
-        ( Pure (..)
+        ( Pure 
         , UnexpectedEOI (..)
         , runPure
         , PureState (..)
@@ -68,7 +68,7 @@ instance Run (State PureState) Character where runAlgebra (Character s w)     = 
 
 -- | The 'Pure' backend supports only simple input and output.
 --   Support for 'Password' and 'LinePrewritten' features can be added with 
---   a shim from `System.Console.Wizard.Shim`. 
+--   a shim from "System.Console.Wizard.Shim". 
 newtype Pure a = Pure ((Output :+: OutputLn :+: Line :+: Character) a) 
                deriving ( (:<:) Output
                         , (:<:) OutputLn

@@ -16,7 +16,7 @@ instance Run IO ArbitraryIO where runAlgebra (ArbitraryIO iov f) = iov        >>
 
 -- | The 'BasicIO' backend supports only simple input and output.
 --   Support for 'Password' and 'LinePrewritten' features can be added with 
---   a shim from `System.Console.Wizard.Shim`. 
+--   a shim from 'System.Console.Wizard.Shim'. 
 newtype BasicIO a = BasicIO (( Output 
                            :+: OutputLn 
                            :+: Line 

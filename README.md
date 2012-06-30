@@ -44,7 +44,7 @@ A value of type `Wizard b a` is a conversation with the user via back-end `b` th
 foo :: Wizard Haskeline Int
 ```
 
-Or polymorphically for many back-ends line so:
+Or polymorphically for many back-ends like so:
 
 ```haskell
 foo :: (Output :<: b, Line :<: b) => Wizard b Int
