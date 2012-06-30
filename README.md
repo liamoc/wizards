@@ -50,7 +50,7 @@ Or polymorphically for many back-ends line so:
 foo :: (Output :<: b, Line :<: b) => Wizard b Int
 ```
 
-This describes a `Wizard` that will result in an `Int` that runs on any back-end that supports Output and Line.
+This describes a `Wizard` that will result in an `Int` that runs on any back-end that supports capabilities for `Output` and `Line`.
 
 Below are a series of educational examples. You'll probably need to run them with `-XOverlappingInstances`. If you want more structured documentation, please refer to the API documentation on Hackage (or generate it with `cabal haddock`).
 
@@ -191,20 +191,6 @@ main = void $ runInputT defaultSettings $ run $ haskeline $ sticksW
 ```
 
 This will run the parseSticks parser on the user input, and, if it succeeds, output the number of sticks parsed. If it fails, it will output an error message.
-
-### Menus Extension
-
-Menus are constructed with `choice`, composed with `mappend` or `(<>)`, and made into a `Wizard` with `menu`.
-
-```haskell
-menuExample :: (Menu :<: b) => Wizard b ()
-menuExample = menu "Choose a choice: " $ choice "First choice"  (outputLn "You chose the first choice")
-                                      <> choice "Second choice" (outputLn "You chose the second choice")
-
-main = runInputT defaultSettings $ run $ (menuExample :: Wizard (Menu :+: Haskeline) ())
-```
-
-As `Menu` is an extension, it is not included by the default Haskeline back-end, however it can be easily extended as shown above.
 
 ## Extended features
 
